@@ -1,6 +1,6 @@
 {
     "luci-app-b4": {
-        "description": "B4 service management",
+        "description": "B4 service management and installation",
         "read": {
             "ubus": {
                 "service": [ "list" ]
@@ -8,9 +8,17 @@
             "file": {
                 "/opt/etc/b4/b4.json": [ "read" ],
                 "/etc/init.d/b4": [ "exec" ],
+                "/sbin/logread": [ "exec" ],
                 "/proc/modules": [ "read" ],
                 "/proc/version": [ "read" ],
-                "/tmp/b4.ver": [ "read" ]
+                "/tmp/b4.ver": [ "read" ],
+                "/bin/rm": [ "exec" ],
+                "/bin/sh": [ "exec" ],
+                "/bin/chmod": [ "exec" ],
+                "/usr/bin/wget": [ "exec" ],
+                "/bin/wget": [ "exec" ],
+                "/usr/bin/opkg": [ "exec" ],
+                "/bin/opkg": [ "exec" ]
             }
         },
         "write": {
@@ -19,7 +27,14 @@
             },
             "file": {
                 "/opt/etc/b4/b4.json": [ "write" ],
-                "/etc/init.d/b4": [ "exec" ]
+                "/etc/init.d/b4": [ "exec" ],
+                "/bin/rm": [ "exec" ],
+                "/bin/sh": [ "exec" ],
+                "/bin/chmod": [ "exec" ],
+                "/usr/bin/wget": [ "exec" ],
+                "/bin/wget": [ "exec" ],
+                "/usr/bin/opkg": [ "exec" ],
+                "/bin/opkg": [ "exec" ]
             }
         }
     }
