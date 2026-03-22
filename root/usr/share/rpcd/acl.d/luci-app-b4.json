@@ -1,0 +1,26 @@
+{
+    "luci-app-b4": {
+        "description": "B4 service management",
+        "read": {
+            "ubus": {
+                "service": [ "list" ]
+            },
+            "file": {
+                "/opt/etc/b4/b4.json": [ "read" ],
+                "/etc/init.d/b4": [ "exec" ],
+                "/proc/modules": [ "read" ],
+                "/proc/version": [ "read" ],
+                "/tmp/b4.ver": [ "read" ]
+            }
+        },
+        "write": {
+            "ubus": {
+                "service": [ "set" ]
+            },
+            "file": {
+                "/opt/etc/b4/b4.json": [ "write" ],
+                "/etc/init.d/b4": [ "exec" ]
+            }
+        }
+    }
+}
