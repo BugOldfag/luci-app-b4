@@ -1,0 +1,13 @@
+{
+    "admin/services/b4": {
+        "title": "Bye Bye Big Bro (B4)",
+        "order": 90,
+        "action": {
+            "type": "view",
+            "path": "b4/overview"
+        },
+        "depends": {
+            "acl": [ "luci-app-b4" ]
+        }
+    }
+}
