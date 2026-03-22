@@ -643,4 +643,77 @@ return view.extend({
                         }, 'Обновить до последней версии')
                     ])
                 ]),
-                E('div', { class: '
+                E('div', { class: 'cbi-value', style: 'margin-bottom: 10px; display: flex; align-items: center;' }, [
+                    E('label', { class: 'cbi-value-title', style: darkPanelLabelStyle }, 'Удаление'),
+                    E('div', { class: 'cbi-value-field', style: darkPanelFieldStyle }, [
+                        E('button', {
+                            class: 'cbi-button cbi-button-negative',
+                            style: installed ? 'background: #d9534f; border-color: #d43f3a; color: white;' : disabledButtonStyle,
+                            click: removeServiceHandler
+                        }, 'Удалить B4')
+                    ])
+                ])
+            ])
+        ]);
+
+        var logControl = E('div', { style: 'margin-bottom: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;' }, [
+            E('button', {
+                class: 'cbi-button cbi-button-reload',
+                style: installed ? '' : disabledButtonStyle,
+                click: refreshLog
+            }, 'Обновить лог'),
+            E('button', {
+                class: 'cbi-button cbi-button-' + (syslogEnabled ? 'action' : 'neutral'),
+                style: installed ? '' : disabledButtonStyle,
+                click: toggleLogging
+            }, syslogEnabled ? 'Выключить логирование' : 'Включить логирование')
+        ]);
+
+        var logSection = E('div', { class: 'cbi-section' }, [
+            E('div', { style: sectionTitleStyle }, 'Лог службы'),
+            E('div', { style: darkPanelStyle }, [
+                logControl,
+                E('textarea', {
+                    class: 'cbi-input-textarea',
+                    style: 'width: 100%; height: 300px; font-family: monospace; background: #000; color: #fff; border: 1px solid #333;',
+                    readonly: 'readonly',
+                    id: 'log-content'
+                }, 'Нажмите «Обновить лог»')
+            ])
+        ]);
+
+        var tabNames = ['Основное', 'Совместимость'];
+        var activeTab = 0;
+        var tabContents = [
+            E('div', [configuratorSection, installStatusSection, controlSection, logSection]),
+            E('div', [compatibilitySection])
+        ];
+
+        function createTabs() {
+            var tabs = E('div', { style: 'margin-bottom: 15px; display: flex; gap: 5px;' });
+            var contents = E('div');
+            for (var i = 0; i < tabNames.length; i++) {
+                (function(idx) {
+                    var tabButton = E('button', {
+                        class: 'cbi-button cbi-button-' + (idx === activeTab ? 'action' : 'neutral'),
+                        style: idx === activeTab ? 'background: #f5ad18; border-color: #f5ad18; color: #000;' : '',
+                        click: function(ev) {
+                            ev.preventDefault();
+                            activeTab = idx;
+                            var newTabs = createTabs();
+                            var oldTabs = document.getElementById('tabs-container');
+                            if (oldTabs) oldTabs.parentNode.replaceChild(newTabs, oldTabs);
+                        }
+                    }, tabNames[idx]);
+                    tabs.appendChild(tabButton);
+                })(i);
+            }
+            contents.appendChild(tabContents[activeTab]);
+            return E('div', { id: 'tabs-container' }, [tabs, contents]);
+        }
+
+        var tabsContainer = createTabs();
+
+        return E([titleSection, linksSection, tabsContainer]);
+    }
+});
