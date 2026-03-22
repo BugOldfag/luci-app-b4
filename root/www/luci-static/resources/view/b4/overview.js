@@ -42,10 +42,6 @@ function setServiceState(action) {
     return fs.exec_direct('/etc/init.d/b4', [action]);
 }
 
-function runUpdate() {
-    return fs.exec_direct('/root/b4install.sh', ['--update']);
-}
-
 function removeService() {
     return setServiceState('stop')
         .then(function() { return setAutostart(false); })
@@ -86,13 +82,13 @@ function getLog() {
     return getSyslogState().then(function(syslogEnabled) {
         if (!syslogEnabled) return 'Логирование отключено. Включите его, чтобы видеть записи.';
         return fs.exec_direct('/sbin/logread', []).then(function(res) {
-            if (!res || typeof res.stdout !== 'string') return 'Лог временно недоступен';
+            if (!res || typeof res.stdout !== 'string') return 'Лог временно недоступен, автор в курсе, потом будет работать, это Альфа версия приложения.';
             var lines = res.stdout.split('\n').filter(function(l) {
                 return l.toLowerCase().indexOf('b4') > -1;
             });
             return lines.slice(-50).join('\n') || 'Нет записей в логе';
         }).catch(function() {
-            return 'Не удалось получить лог';
+            return 'Лог временно недоступен, автор в курсе, потом будет работать, это Альфа версия приложения.';
         });
     });
 }
@@ -249,6 +245,7 @@ return view.extend({
     title: 'Bye Bye Big Bro (B4)',
 
     load: function() {
+        console.log('B4: загрузка данных');
         return Promise.all([
             callServiceList({ name: 'b4' }).catch(function() { return null; }),
             getAutostartStatus(),
@@ -352,13 +349,13 @@ return view.extend({
         var netfilterText = netfilter.compatible ? 'Совместим' : 'Не совместим';
         var netfilterColor = netfilter.compatible ? '#28a745' : '#dc3545';
         var netfilterDetail = netfilter.detail ? ' - ' + netfilter.detail : '';
-        var netfilterHint = 'Требуется NFQUEUE. Если вы установили чистую сборку с openwrt.org, то нужно до установить NFQUEUE.';
+        var netfilterHint = 'Требуется NFQUEUE. Если вы установили чистую сборку с openwrt.org, то нужно до установить NFQUEUE.\n\nКоманда для SSH:\nopkg update\nopkg install kmod-nft-queue kmod-nf-conntrack-netlink iptables-mod-nfqueue jq wget-ssl coreutils-nohup';
 
         var compatibilitySection = E('div', { class: 'cbi-section' }, [
             E('div', { style: sectionTitleStyle }, 'Совместимость системы'),
             E('div', { style: darkPanelStyle + ' padding: 15px;' }, [
                 E('div', { style: 'margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 15px;' }, [
-                    E('div', { style: 'font-weight: bold; font-size: 1.1em; margin-bottom: 8px; color: #f5ad18;' }, 'Архитектура'),
+                    E('div', { style: 'font-weight: bold; font-size: 1.1em; margin-bottom: 8px; color: #fff;' }, 'Архитектура'),
                     E('div', { style: 'font-size: 1em; margin-bottom: 8px;' }, [
                         E('span', { style: 'color: ' + archDisplayColor + '; font-weight: bold;' }, archDisplayText),
                         E('span', { style: 'margin-left: 10px; color: #aaa;' }, '(' + arch.normalized + ')' + archDetail)
@@ -366,12 +363,12 @@ return view.extend({
                     E('div', { style: 'color: #888; font-size: 0.85em; margin-top: 5px;' }, 'Поддерживаемые: amd64, arm64, armv7, armv6, armv5, mips, mipsle, mips64, mips64le, ppc64, ppc64le, riscv64, s390x')
                 ]),
                 E('div', { style: 'margin-bottom: 10px;' }, [
-                    E('div', { style: 'font-weight: bold; font-size: 1.1em; margin-bottom: 8px; color: #f5ad18;' }, 'Netfilter'),
+                    E('div', { style: 'font-weight: bold; font-size: 1.1em; margin-bottom: 8px; color: #fff;' }, 'Netfilter'),
                     E('div', { style: 'font-size: 1em; margin-bottom: 8px;' }, [
                         E('span', { style: 'color: ' + netfilterColor + '; font-weight: bold;' }, netfilterText),
                         E('span', { style: 'margin-left: 10px; color: #aaa;' }, netfilterDetail)
                     ]),
-                    E('div', { style: 'color: #888; font-size: 0.85em; margin-top: 5px;' }, netfilterHint)
+                    E('div', { style: 'color: #888; font-size: 0.85em; margin-top: 5px; white-space: pre-wrap;' }, netfilterHint)
                 ])
             ])
         ]);
@@ -398,18 +395,45 @@ return view.extend({
 
         function updateService(ev) {
             ev.preventDefault();
-            if (!installed) return;
-            ui.showModal('Обновление', [
-                E('p', 'Выполняется обновление, пожалуйста подождите...'),
-                E('pre', { id: 'update-log', style: 'max-height:200px; overflow:auto; background:#000; color:#fff; padding:5px;' })
+            console.log('B4: начало обновления');
+            var modal = ui.showModal('Обновление B4', [
+                E('p', 'Выполняется обновление. Пожалуйста, подождите...'),
+                E('pre', { id: 'update-log', style: 'max-height:400px; overflow:auto; background:#000; color:#fff; padding:5px; white-space:pre-wrap;' })
             ]);
-            runUpdate().then(function(res) {
-                var logEl = document.getElementById('update-log');
-                if (logEl) logEl.textContent = res.stdout + (res.stderr ? '\n' + res.stderr : '');
-                ui.addNotification(null, E('p', 'Обновление завершено'));
-                setTimeout(function() { window.location.reload(); }, 2000);
+            var logEl = document.getElementById('update-log');
+            function updateLog(msg) {
+                if (logEl) logEl.textContent += msg + '\n';
+            }
+            updateLog('Начинаем обновление B4...');
+            runInstallation(updateLog).then(function() {
+                updateLog('Обновление завершено успешно.');
+                setServiceState('restart').then(function() {
+                    updateLog('B4 перезапущен. Открываем веб-интерфейс...');
+                    setTimeout(function() {
+                        window.open('http://' + window.location.hostname + ':7000', '_blank');
+                    }, 1000);
+                    setTimeout(function() {
+                        ui.hideModal();
+                        window.location.reload();
+                    }, 2000);
+                }).catch(function(err) {
+                    updateLog('Ошибка перезапуска: ' + err.message);
+                    setTimeout(function() { window.location.reload(); }, 2000);
+                });
             }).catch(function(err) {
-                ui.addNotification(null, E('p', { class: 'error' }, 'Ошибка обновления: ' + err.message));
+                updateLog('❌ Обновление не удалось: ' + err.message);
+                var modalContent = modal.querySelector('.modal-content');
+                if (modalContent) {
+                    var closeButton = E('button', {
+                        class: 'cbi-button cbi-button-neutral',
+                        style: 'background: #6c757d; border-color: #6c757d; color: white; margin-top: 20px;',
+                        click: function(ev) {
+                            ev.preventDefault();
+                            ui.hideModal();
+                        }
+                    }, 'Закрыть');
+                    modalContent.appendChild(closeButton);
+                }
             });
         }
 
@@ -417,6 +441,7 @@ return view.extend({
             ev.preventDefault();
             if (!installed) return;
             if (confirm('Вы уверены, что хотите полностью удалить Bye Bye Big Bro (B4)?')) {
+                console.log('B4: удаление');
                 removeService().finally(function() {
                     ui.addNotification(null, E('p', 'Bye Bye Big Bro (B4) был удален с вашего устройства'));
                     setTimeout(function() { window.location.reload(); }, 2000);
@@ -427,6 +452,8 @@ return view.extend({
         function installService(ev) {
             ev.preventDefault();
             if (installed) return;
+            console.log('B4: начало установки');
+
             var modal = ui.showModal('Установка B4', [
                 E('p', 'Выполняется установка. Пожалуйста, подождите...'),
                 E('pre', { id: 'install-log', style: 'max-height:400px; overflow:auto; background:#000; color:#fff; padding:5px; white-space:pre-wrap;' })
@@ -438,7 +465,7 @@ return view.extend({
             updateLog('Начинаем установку B4...');
             runInstallation(updateLog).then(function() {
                 updateLog('Установка завершена успешно.');
-                setServiceState('start').then(function() {
+                setServiceState('restart').then(function() {
                     updateLog('B4 запущен. Открываем веб-интерфейс...');
                     setTimeout(function() {
                         window.open('http://' + window.location.hostname + ':7000', '_blank');
@@ -449,6 +476,7 @@ return view.extend({
                     }, 2000);
                 }).catch(function(err) {
                     updateLog('Ошибка запуска: ' + err.message);
+                    setTimeout(function() { window.location.reload(); }, 2000);
                 });
             }).catch(function(err) {
                 updateLog('❌ Установка не удалась: ' + err.message);
@@ -550,9 +578,10 @@ return view.extend({
         var statusColor = installed ? '#28a745' : '#dc3545';
         var versionButton = installed ?
             E('button', {
+                id: 'b4_version_button',
                 class: 'cbi-button cbi-button-neutral',
-                style: 'background: #6c757d; border-color: #6c757d; color: white; margin-left: 20px; cursor: default;',
-            }, 'Версия ' + version) :
+                style: 'background: #000; border-color: #000; color: #fff; margin-left: 20px; cursor: default;',
+            }, version) :
             E('button', {
                 class: 'cbi-button cbi-button-apply',
                 style: 'background: #007bff; border-color: #0069d9; color: white;',
@@ -595,7 +624,7 @@ return view.extend({
                     ])
                 ]),
                 E('div', { class: 'cbi-value', style: 'margin-bottom: 10px; display: flex; align-items: center;' }, [
-                    E('label', { class: 'cbi-value-title', style: darkPanelLabelStyle }, 'Перезапуск'),
+                    E('label', { class: 'cbi-value-title', style: darkPanelLabelStyle }, 'Перезапуск B4'),
                     E('div', { class: 'cbi-value-field', style: darkPanelFieldStyle }, [
                         E('button', {
                             class: 'cbi-button cbi-button-action',
@@ -614,77 +643,4 @@ return view.extend({
                         }, 'Обновить до последней версии')
                     ])
                 ]),
-                E('div', { class: 'cbi-value', style: 'margin-bottom: 10px; display: flex; align-items: center;' }, [
-                    E('label', { class: 'cbi-value-title', style: darkPanelLabelStyle }, 'Удаление'),
-                    E('div', { class: 'cbi-value-field', style: darkPanelFieldStyle }, [
-                        E('button', {
-                            class: 'cbi-button cbi-button-negative',
-                            style: installed ? 'background: #d9534f; border-color: #d43f3a; color: white;' : disabledButtonStyle,
-                            click: removeServiceHandler
-                        }, 'Удалить B4')
-                    ])
-                ])
-            ])
-        ]);
-
-        var logControl = E('div', { style: 'margin-bottom: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;' }, [
-            E('button', {
-                class: 'cbi-button cbi-button-reload',
-                style: installed ? '' : disabledButtonStyle,
-                click: refreshLog
-            }, 'Обновить лог'),
-            E('button', {
-                class: 'cbi-button cbi-button-' + (syslogEnabled ? 'action' : 'neutral'),
-                style: installed ? '' : disabledButtonStyle,
-                click: toggleLogging
-            }, syslogEnabled ? 'Выключить логирование' : 'Включить логирование')
-        ]);
-
-        var logSection = E('div', { class: 'cbi-section' }, [
-            E('div', { style: sectionTitleStyle }, 'Лог службы'),
-            E('div', { style: darkPanelStyle }, [
-                logControl,
-                E('textarea', {
-                    class: 'cbi-input-textarea',
-                    style: 'width: 100%; height: 300px; font-family: monospace; background: #000; color: #fff; border: 1px solid #333;',
-                    readonly: 'readonly',
-                    id: 'log-content'
-                }, 'Нажмите «Обновить лог»')
-            ])
-        ]);
-
-        var tabNames = ['Основное', 'Совместимость'];
-        var activeTab = 0;
-        var tabContents = [
-            E('div', [configuratorSection, installStatusSection, controlSection, logSection]),
-            E('div', [compatibilitySection])
-        ];
-
-        function createTabs() {
-            var tabs = E('div', { style: 'margin-bottom: 15px; display: flex; gap: 5px;' });
-            var contents = E('div');
-            for (var i = 0; i < tabNames.length; i++) {
-                (function(idx) {
-                    var tabButton = E('button', {
-                        class: 'cbi-button cbi-button-' + (idx === activeTab ? 'action' : 'neutral'),
-                        style: idx === activeTab ? 'background: #f5ad18; border-color: #f5ad18; color: #000;' : '',
-                        click: function(ev) {
-                            ev.preventDefault();
-                            activeTab = idx;
-                            var newTabs = createTabs();
-                            var oldTabs = document.getElementById('tabs-container');
-                            if (oldTabs) oldTabs.parentNode.replaceChild(newTabs, oldTabs);
-                        }
-                    }, tabNames[idx]);
-                    tabs.appendChild(tabButton);
-                })(i);
-            }
-            contents.appendChild(tabContents[activeTab]);
-            return E('div', { id: 'tabs-container' }, [tabs, contents]);
-        }
-
-        var tabsContainer = createTabs();
-
-        return E([titleSection, linksSection, tabsContainer]);
-    }
-});
+                E('div', { class: '
