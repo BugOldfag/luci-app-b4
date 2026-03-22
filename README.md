@@ -75,27 +75,5 @@ rm -rf /tmp/luci-*
 /etc/init.d/uhttpd restart
 ```
 
-## 📁 Структура репозитория
-
-luci-app-b4/
-├── Makefile                     # для сборки IPK (опционально)
-├── install.sh                   # установочный скрипт
-├── remove_luci.sh               # скрипт удаления
-├── README.md
-└── root/
-    ├── usr/
-    │   ├── share/
-    │   │   ├── luci/menu.d/luci-app-b4.json        # пункт меню
-    │   │   └── rpcd/acl.d/luci-app-b4.json         # права доступа
-    │   └── sbin/
-    │       └── luci-b4-remove                       # команда удаления
-    └── www/
-        └── luci-static/
-            └── resources/
-                └── view/
-                    └── b4/
-                        └── overview.js              # основной интерфейс
-
-
 ## 📄 Лицензия
 MIT License
