@@ -164,7 +164,7 @@ function getSavedWebUrl() {
 
 function saveWebUrl(url) {
     var parts = url.split(':');
-    var ip = parts[0] || '0.0.0.0';
+    var ip = parts[0] || '192.168.1.1';
     var port = parseInt(parts[1]) || 7000;
 
     return fs.read('/opt/etc/b4/b4.json').then(function(data) {
